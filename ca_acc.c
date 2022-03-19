@@ -130,8 +130,8 @@ static void simulate_cpu(Line *from, Line *to, int lines)
 static void boundary_gpu(Line *buf, int lines)
 {
 	int x, y;
-  //#pragma acc data present(buf)
-  //#pragma acc parallel loop independent
+  #pragma acc data present(buf)
+  #pragma acc parallel loop independent
 	for (y = 0;  y <= lines+1;  y++) {
 		/* copy rightmost column to the buffer column 0 */
 		buf[y][0      ] = buf[y][XSIZE];
@@ -139,8 +139,8 @@ static void boundary_gpu(Line *buf, int lines)
 		/* copy leftmost column to the buffer column XSIZE + 1 */
 		buf[y][XSIZE+1] = buf[y][1    ];
 	}
-  //#pragma acc data present(buf)
-  //#pragma acc parallel loop independent
+  #pragma acc data present(buf)
+  #pragma acc parallel loop independent
 	for (x = 0;  x <= XSIZE+1;  x++) {
 		/* copy bottommost row to buffer row 0 */
 		buf[0][x      ] = buf[lines][x];
@@ -156,8 +156,7 @@ static void boundary_gpu(Line *buf, int lines)
 static void simulate_gpu(Line *from, Line *restrict to, int lines)
 {
 	int x, y;
-	boundary_gpu(from, lines);
-  //#pragma acc kernels loop present(from,to)
+
   #pragma acc parallel loop present(from,to)
 	for (y = 1;  y <= lines;  y++) {
     //#pragma acc loop independent
@@ -205,13 +204,14 @@ int main(int argc, char** argv)
   hash = getMD5DigestStr(cpufrom, lines);
   printf("hash cpu: %s\n", hash);
 
-	free(from);
-	free(to);
+	free(cpufrom);
+	free(cputo);
 	/* measurement loop */
 	TIME_GET(start);
   // copy 'from' to device and back out afterwards, create 'to' on the device
   #pragma acc data copy(from), create(to)
 	for (i = 0;  i < its;  i++) {
+    boundary_gpu(from, lines);
 		simulate_gpu(from, to, lines);
 		temp = from;  from = to;  to = temp;
 	} 
@@ -222,6 +222,8 @@ int main(int argc, char** argv)
 
 	printf("hash gpu: %s\ttime: %.1f ms\n", hash, TIME_DIFF(start,end)*1000);
 
+  free(from);
+  free(to);
 	free(hash);
 
 
