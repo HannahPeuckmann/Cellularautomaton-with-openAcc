@@ -157,15 +157,11 @@ static void simulate_gpu(Line *from, Line *restrict to, int lines)
 {
 	int x, y;
 
-  #pragma acc parallel loop present(from,to)
+  #pragma acc parallel loop //present(from,to)
 	for (y = 1;  y <= lines;  y++) {
-    //#pragma acc loop independent
 		for (x = 1;  x <= XSIZE;  x++) {
-      static State anneal[10] = {0, 0, 0, 0, 1, 0, 1, 1, 1, 1};
-      to[y][x]= anneal[(from)[(y)-1][(x)-1] + (from)[(y)][(x)-1] + (from)[(y)+1][(x)-1] +\
-        (from)[(y)-1][(x)  ] + (from)[(y)][(x)  ] + (from)[(y)+1][(x)  ] +\
-        (from)[(y)-1][(x)+1] + (from)[(y)][(x)+1] + (from)[(y)+1][(x)+1]];
-		}
+      to[y][x]= transition(from, x, y);
+    }
 	}
 }
 
